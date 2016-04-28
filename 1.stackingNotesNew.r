@@ -2,9 +2,7 @@
 ## This is the stacking note for group K.
 # first, set your working directory to the folder where you put all the data and r files.
 # in my case it is:
-     setwd("C:/Users/xd/Datacourse_NCI/DataMining/OnlineNewsPopularity")
-
-load("stackingSessionNew.RData")     # run this line to skip to line 62.
+#    setwd("C:/Users/.../OnlineNewsPopularity")
      
 #### I strongly recommend that we use the same train and test sets throughout our project:
 # set the predefined train and test sets.
@@ -30,10 +28,12 @@ source('getCVsets.r')
 
 Nfold = 5
 cvlists = getCVsets(train, train$lbscut, n=Nfold, seed=3030)  
-# to store the sub-train and cv sets (10 pairs for 10-fold)
+# to store the sub-train and cv sets (5 pairs for 5-fold)
+# The seed number can be changed so repeated works can generate some deviation, 
+# based on which the stability of each model is evaluated.
 
 # to help sort the combined predictions on the train set.  
-all_idx = cvlists$all_idx
+# all_idx = cvlists$all_idx
 
 # Load these packages. Install them if you haven't done so.
 
@@ -45,17 +45,17 @@ library(klaR)  # needed for NB
 library(pROC)  # needed for training NB with caret
 library(h2o)   # used for ANN
 library(psych)  # needed for NB, use PCA to get uncorrelated variables.
-library(nnls)  # a kind of multi-response linear regression
+library(nnls)  # a multi-response linear regression with non-negative-coefficient constraint
 
 # some helper functions I have written: Pease keep them in the same folder as the data files.
 
 source("calclogloss.r")
-source("getperformance.r")
+source("getperformance.r")   # will need the library "ROCR" installed
 source('doRF.r')
 source('doLogiReg.r')
 source('doKNN.r')
 source('doNB.r')
-source('doANNh2o.r')
+source('doANNh2o.r')     # need the library "h2o" installed
 source('pred.transform.r')
 
 ##  1. do logistic regression with "doLogiReg.r" 
@@ -68,6 +68,13 @@ glm_pred_test = glm_pred_list$glm_pred_test
 calclogloss(glm_pred_test, test$lbscut)      # logloss=0.6317896
 getperformance(glm_pred_test, test$lbscut, getplot=F, simple=F)  #auc=0.6988656, acc05=0.6475865, acc=0.64827
 
+# For getperformance(), 
+# use getplot=c(T, F) to control if plotting the ROC curve
+# and
+# use simple=c(T, F) to control if only the AUC, threshold and best accuracy are returned, 
+# or all the metrics are returned including the confusion matrix, recall, precision and specificity.
+
+# Check performance on the training set to see if there is any overfitting
 calclogloss(glm_pred_train, train$lbscut)   # logloss=0.6307993
 getperformance(glm_pred_train, train$lbscut, getplot=F, simple=F)
 # AUC=0.7035839,  accubest=0.6530336
@@ -115,40 +122,27 @@ getperformance(knn_pred_train, train$lbscut) #auc=0.6740216, accubest=0.6305884
 # Conclusion: the performance is slightly worse than the wrong way! 
 # maybe just noise, in fact they are equally well due to homogenerity of the data.
 
-
-
-# 3. made "doNB.r"
+# 3. make "doNB.r"
 library(caret)
 library(klaR)
 
 source('doNB.r')
-#    nb_pred_list_old = doNB(cvlists, all_idx, test=test)   # will take an hour!!
-#    
-#    nb_pred_train_old = nb_pred_list$nb_pred_train
-#    nb_pred_test_old = nb_pred_list$nb_pred_test
-#    
-#    calclogloss(nb_pred_test_old, test$lbscut)      # logloss= 1.7304
-#    getperformance(nb_pred_test_old, test$lbscut) #auc=0.6843 acc05=0.5547, acc=0.6365
-
 
 ## special notes for NB: the best practice is to do PCA, and use all extracted 
 ## features instead of the original ones, 
 
-## Because Naive Bayes works ideally when the predictors are independent from each other.
-
-#      4.2  do NB on the extracted PCA variables (use all the 57 variables!)
-# do pca:
+## Because Naive Bayes works ideally when the predictors are independent (orthogonal) from each other.
+## Do PCA:
 library(psych)
 fit_pca = principal(newspop[,1:57], nfactors=57, rotate="varimax")
 newspop_pca = data.frame(fit_pca$scores)
 newspop_pca = cbind(newspop_pca, lbscut=newspop$lbscut)
 #  summary(fit_pca$loadings)
 #  plot(fit_pca$values,type="lines")
-
 train_pca = subset(newspop_pca, split == T)
 test_pca = subset(newspop_pca, split == F)
 
-# split the train_norm set as before
+# split the train_pca set as before
 Nfold = 5
 cvlists_pca = getCVsets(train_pca, train$lbscut, n=Nfold, seed=3030)
 
@@ -167,7 +161,6 @@ getperformance(nb_pred_train, train$lbscut, getplot=F) #auc=0.6912445, acc=0.640
 summary(nb_pred_test)
 
 # every time doNB returns the same result!!
-
 
 #4.  do randomForest:
 source('doRF.r')
