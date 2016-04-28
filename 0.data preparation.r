@@ -12,7 +12,7 @@ cormatrix = data.frame(cormatrix)
 
 namesX = names(cormatrix)   # 58 predictor variables
 
-corrnames=c()
+corrnames = c()
 for (i in 1:57) {
     corrnames1 = namesX[which(cormatrix[,i] > 0.99)]
     idx = which(corrnames1==namesX[i])+1
@@ -80,7 +80,7 @@ plot(newspop$kw_max_min, newspop$kw_avg_min)
 
 # And as a good practice for recoding categorical features, 
 #  we only need six columns for the weekday features. Removed one of the seven columns
-newspop$weekday_is_sunday=NULL
+newspop$weekday_is_sunday = NULL
 
 newspopdata = data.frame(newsurl, timedelta, newspop)
 
@@ -149,7 +149,7 @@ lbscut = lbs
 lbscut[lbscut<=1400] = 0
 lbscut[lbscut>1400] = 1
 
-newspop1=newspop[1:57]
+newspop1 = newspop[1:57]
 newspop1$lbscut = as.integer(lbscut)
 newspop1$lbscut = as.factor(newspop1$lbscut)
 # so we have the new data set newspop1, which has all the predictors
@@ -207,14 +207,14 @@ auc1    # 0.7049
 
 # Find the threshold to divide the first and second levels
 # create a data frame from the performence data
-cutoffs1 <- data.frame(cut=ROCRperf1@alpha.values[[1]], fpr=ROCRperf1@x.values[[1]], 
+cutoffs1 = data.frame(cut=ROCRperf1@alpha.values[[1]], fpr=ROCRperf1@x.values[[1]], 
                        tpr=ROCRperf1@y.values[[1]])
 
 # Use a new score, tpr*tnr/(tpr=tnr), to decide which threshold is best 
 cutoffs1$NewScore = cutoffs1$tpr * (1-cutoffs1$fpr) / (cutoffs1$tpr + (1-cutoffs1$fpr))
 
 # then just get the threshold with the max of new score
-thresh1=cutoffs1$cut[which.max(cutoffs1$NewScore)]
+thresh1 = cutoffs1$cut[which.max(cutoffs1$NewScore)]
 
 thresh1 # 0.4942487
 
