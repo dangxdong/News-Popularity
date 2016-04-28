@@ -160,7 +160,20 @@ calclogloss(nb_pred_train, train$lbscut)      # logloss= 1.048274
 getperformance(nb_pred_train, train$lbscut, getplot=F) #auc=0.6912445, acc=0.6402392
 summary(nb_pred_test)
 
-# every time doNB returns the same result!!
+#### Transforming the predictions from Naive Bayes,
+#### because its predictions are higly skewed.
+###  letting them scaled with best cutoff to 0.5.
+
+source('pred.transform.r')
+cut.nb = getperformance(nb_pred_train, train$lbscut, getplot=F)$bestcutoff
+nb_pred_train = pred.transform(nb_pred_train, cut.nb)
+
+# use the same cutoff as in train set for test set
+# because we are supposed not to know the true outcome of test set 
+# before doing the final modelling.
+nb_pred_test = pred.transform(nb_pred_test, cut.nb)
+# So both nb_pred_train and nb_pred_test are comparable with others in distribution.
+
 
 #4.  do randomForest:
 source('doRF.r')
@@ -203,30 +216,10 @@ getperformance(ann_pred_train, train$lbscut) # AUC=0.7113221, accubest=0.6559262
 
 ##### After doing all the level-0 predictions, we are going to the level-1
 
-
 ##  the predictions of the level-0 models are taken as the input data for level-1
 # so they are the input of the level-1 model.
 
-
-#### But try transforming the predictions from Naive Bayes,
-#### because its predictions are far scewed.
-###  letting them scaled with best cutoff to 0.5.
-
-source('pred.transform.r')
-cut.nb = getperformance(nb_pred_train, train$lbscut, getplot=F)$bestcutoff
-nb_pred_train = pred.transform(nb_pred_train, cut.nb)
-
-# use the same cutoff as in train set for test set
-# because we are supposed not to know the true outcome of test set 
-# before doing the final modelling.
-nb_pred_test = pred.transform(nb_pred_test, cut.nb)
-# So both nb_pred_train and nb_pred_test are comparable with others in scale.
-
-
-## predictions from other modles don't have to be transformed.
-
-
-### finally all the predictions from the five different models are rescaled
+### finally all the predictions from the five different models are put together
 
 predtraindf = data.frame(logi_pred=glm_pred_train, knn_pred=knn_pred_train,
                          nb_pred= nb_pred_train, rf_pred=rf_pred_train,
@@ -238,19 +231,7 @@ predtestdf = data.frame(logi_pred=glm_pred_test, knn_pred=knn_pred_test,
 
 summary(predtraindf); summary(predtestdf)
 
-
-# predtraindf1=predtraindf
-# predtestdf1=predtestdf
-# predtraindf1$lbscut=as.integer(as.character(predtraindf1$lbscut))
-# predtestdf1$lbscut=as.integer(as.character(predtestdf1$lbscut))
-# 
-# write.csv(predtraindf1, "predtraindf.csv", row.names = F)
-# write.csv(predtestdf1, "predtestdf.csv", row.names = F)
-
-
-
 ###### Do the Level-1 stacked model!!! ####
-
 
 #### 2.0 simply get the average:
 
@@ -285,7 +266,6 @@ getperformance(avg_pred_test_w, test$lbscut, getplot=F, simple=F)
 #### 3.1 simply using the whole train set to train the model, 
 ####          and predict on the test set.
 
-
 glm2 = glm(lbscut ~ ., data=predtraindf, family="binomial")
 glm_pred_test_2 = predict(glm2, predtestdf, type="response")
 summary(glm_pred_test_2)
@@ -302,8 +282,7 @@ getperformance(glm_pred_train_2, train$lbscut, getplot=F)
 
 # conclusion: better than the averaged result.
 
-
-### 3.2 do the five fold modeling:
+### 3.2 do the five fold logistic regression :
 
 Nfold = 5
 cvlists_stack = getCVsets(predtraindf, train$lbscut, n=Nfold, seed=3030)
@@ -314,12 +293,8 @@ glm_pred_test_3 = glm_pred_list_stack$glm_pred_test
 calclogloss(glm_pred_test_3, test$lbscut)      # # logloss=0.6098538
 getperformance(glm_pred_test_3, test$lbscut, getplot=F, simple=F)  
 #auc=0.7258581, accubest=0.6622811
-
 ### Conclusion: 
 # doing 5-fold is almost the same as modeling on the whole training set at level-1 stage. 
-
-# still not significantly better than single RF !!! roughly the same!
-#  better than just doing averaging!!!!
 
 # check for overfitting by looking at the prediction on the train set:
 calclogloss(glm_pred_train_3,train$lbscut)      # # logloss=0.6082222
@@ -364,8 +339,7 @@ getperformance(nnls_pred_train, train$lbscut, getplot=F, simple=F)
 # conclusion: 
 # non-negative regression is equaly well as logistic regression.
 
-
-##  3.4  because above showed KNN is least useful, try to exclude it from logistic regression:
+##  3.4  because nnls showed KNN is least useful, try to exclude it from logistic regression:
 glm3 = glm(lbscut ~ ., data=predtraindf[,c(1,2, 4,5,6)], family="binomial")
 glm_pred_test_3 = predict(glm3, predtestdf, type="response")
 summary(glm_pred_test_3)
@@ -374,20 +348,17 @@ calclogloss(glm_pred_test_3, test$lbscut)   # logloss=0.6098342
 getperformance(glm_pred_test_3, test$lbscut, getplot=F, simple=F) 
 # AUC=0.7258646, accubest=0.6627082
 
-
-
 ##
 ##  4.0   try neural network as the stacked (level-1) model:
 
 ##  4.1  just train on the whole train set
 library(h2o)
-
 h2o.init(ip = 'localhost', port = 54321, max_mem_size = '4g')
 
 predtraindf.h2o = as.h2o(predtraindf)
 predtestdf.h2o = as.h2o(predtestdf)
 
-# to overcome randomness, do three times and take average:
+# to overcome randomness, do three to ten times and take average:
 h2o_pred_test_stack = rep(0, dim(test)[1])
 for (ii in 1:3) {
     model_stack_ann =
@@ -406,9 +377,9 @@ for (ii in 1:3) {
     pred_test.df = as.data.frame(pred_test.h2o[,3]) # only get the third column to save time
     h2o_pred_test_stack_temp = pred_test.df$p1
     h2o_pred_test_stack = h2o_pred_test_stack + h2o_pred_test_stack_temp
-    
 }
 h2o_pred_test_stack = h2o_pred_test_stack / 3
+
 calclogloss(h2o_pred_test_stack,test$lbscut)      # logloss=0.6095819
 getperformance(h2o_pred_test_stack, test$lbscut, getplot=F, simple=F)  
 # AUC=0.7028985, accubest=0.6457924
@@ -416,10 +387,7 @@ summary(h2o_pred_test)
 
 h2o.removeAll()
 
-##  4.2  do 5-fold CV to build the model
-
-##  to be done yet:
-
+##  4.2  A 5-fold CV to build ANN: not better than a single training model.
 #          source('doANNh2o.stack.r')
 #          ann_pred_list_stack = doANNh2o.stack(cvlists_stack, all_idx, test=predtestdf)
 #          
@@ -430,7 +398,6 @@ h2o.removeAll()
 #          getperformance(ann_pred_test_stack, test$lbscut, getplot=F, simple=F) 
 #          # AUC=0.7061422, accubest=0.6517727
 # Not significantly better than doing just one whole model.
-
 # check overfitting with predictions on the train set:
 # calclogloss(ann_pred_train_stack,train$lbscut)      # logloss=0.6912312
 # getperformance(ann_pred_train_stack, train$lbscut, getplot=F) 
@@ -439,12 +406,5 @@ h2o.removeAll()
 
 h2o.shutdown(prompt = F)
 
-
-## Conslusion
-
-
-
-
-
 # save workspace:
-save.image("stackingSessionNew.RData")
+save.image("stackingSessionNew3030.RData")
