@@ -6,14 +6,14 @@ getperformance = function(pred1, lable, getplot=TRUE, simple=FALSE) {
     
     auc1 = as.numeric(performance(ROCRpred1, "auc")@y.values)
     
-    cutoffs1 <- data.frame(cut=ROCRperf1@alpha.values[[1]], fpr=ROCRperf1@x.values[[1]], 
+    cutoffs1 = data.frame(cut=ROCRperf1@alpha.values[[1]], fpr=ROCRperf1@x.values[[1]], 
                            tpr=ROCRperf1@y.values[[1]])
     
     # Use a new score, tpr*tnr/(tpr+tnr), to decide which threshold is best 
     cutoffs1$NewScore = cutoffs1$tpr * (1-cutoffs1$fpr) / (cutoffs1$tpr + (1-cutoffs1$fpr))
     
     # then just get the threshold with the max of new score
-    thresh1=cutoffs1$cut[which.max(cutoffs1$NewScore)]
+    thresh1 = cutoffs1$cut[which.max(cutoffs1$NewScore)]
     
     m = length(pred1)
     
