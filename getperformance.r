@@ -1,6 +1,6 @@
-getperformance = function(pred1, lable, getplot=TRUE, simple=TRUE) {
-
-if (require('ROCR', quietly = TRUE)) {
+getperformance = function(pred1, lable, getplot=TRUE, simple=FALSE) {
+  
+  if (require('ROCR', quietly = TRUE)) {
     ROCRpred1 = prediction(pred1, lable)
     ROCRperf1 = performance(ROCRpred1, "tpr", "fpr")
     
@@ -35,25 +35,26 @@ if (require('ROCR', quietly = TRUE)) {
     if (getplot) { plot(ROCRperf1, colorize=TRUE) }
     
     if (simple) {
-        return(list(             AUC = auc1, 
-                                 bestcutoff = thresh1,
-                                 accuracy.best = accuracy.best ) )
+      return(list(             AUC = auc1, 
+                               bestcutoff = thresh1,
+                               accuracy.best = accuracy.best,
+                               ConfusionMatrixTable_best = tbct) )
     } else {
-    return(list(             AUC = auc1, 
-                      bestcutoff = thresh1, 
-                      accuracy05 = accuracy05, 
-                   accuracy.best = accuracy.best,
-                        recall05 = recall05,
-                     precision05 = precision05,
-                   specificity05 = specificity05,
-                     recall.best = recall05,
-                  precision.best = precision05,
-                specificity.best = specificity05,
-        ConfusionMatrixTable_0.5 = tb05,
-       ConfusionMatrixTable_best = tbct) )
+      return(list(             AUC = auc1, 
+                               bestcutoff = thresh1, 
+                               accuracy05 = accuracy05, 
+                               accuracy.best = accuracy.best,
+                               recall05 = recall05,
+                               precision05 = precision05,
+                               specificity05 = specificity05,
+                               recall.best = recall.best,
+                               precision.best = precision.best,
+                               specificity.best = specificity.best,
+                               ConfusionMatrixTable_0.5 = tb05,
+                               ConfusionMatrixTable_best = tbct) )
     }
-} else {
+  } else {
     warning('Please install the package ROCR. ')
+  }
+  
 }
-
-}    
