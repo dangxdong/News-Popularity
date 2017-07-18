@@ -1,9 +1,8 @@
+source('doNfoldsplit.r')
 getCVsets = function(train, labelvec, n=5, seed=3030) {
-    source('doNfoldsplit.r')
     all_idxlist = doNfoldsplit(labelvec, n, seed)
     labelvec = as.factor(as.character(labelvec))
     mm = length(all_idxlist)
-    
     trainDFs = list()
     cvDFs = list()
     lbTrains = list()
@@ -21,5 +20,3 @@ getCVsets = function(train, labelvec, n=5, seed=3030) {
     all_idx = unlist(all_idxlist)
     list(trainDFs=trainDFs, cvDFs=cvDFs, lbTrains=lbTrains, lbCVs=lbCVs, all_idx=all_idx)
 }
-
-
