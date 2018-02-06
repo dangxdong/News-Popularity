@@ -18,7 +18,7 @@ if (require('caret', quietly = TRUE)) {
         # to save time, do not tune every time. in this case,
         # fL=0 and useKernel=T have been proved to be the best,
         # so just use the fixed parameters and don't do any further sub-cv
-        train_control <- trainControl(method="none", classProbs=T)
+        train_control = trainControl(method="none", classProbs=T)
         nbGrid = expand.grid(.fL=c(0), .usekernel=c(T))
         nb_model_1 = train(x=train1[,1:57], y=train1_lbsX, method="nb",
                       metric="ROC", tuneGrid=nbGrid, trControl=train_control)
